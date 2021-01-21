@@ -32,6 +32,9 @@ from blade.build_accelerator import BuildAccelerator
 from blade.dependency_analyzer import analyze_deps
 from blade.load_build_files import load_targets
 from blade.backend import NinjaFileGenerator
+from blade.blade_platform import SconsPlatform
+from blade.build_environment import BuildEnvironment
+from blade.rules_generator import SconsRulesGenerator
 from blade.test_runner import TestRunner
 
 # Global build manager instance
@@ -109,6 +112,9 @@ class Blade(object):
         self.__build_jobs_num = 0
         self.__test_jobs_num = 0
 
+        self.__scons_platform = SconsPlatform()
+        self.build_environment = BuildEnvironment(self.__root_dir)
+
         self.svn_root_dirs = []
 
         self._verify_history_path = os.path.join(build_dir, '.blade_verify.json')
@@ -118,6 +124,14 @@ class Blade(object):
         self.__build_script = os.path.join(self.__build_dir, 'build.ninja')
 
         self.__all_rule_names = []
+
+    def get_scons_platform(self):
+        """Return handle of the platform class. """
+        return self.__scons_platform
+
+    def get_build_path(self):
+        """The current building path. """
+        return self.__build_dir
 
     def load_targets(self):
         """Load the targets. """
@@ -161,6 +175,12 @@ class Blade(object):
 
         maven_cache = maven.MavenCache.instance(self.__build_dir)
         maven_cache.download_all()
+
+        build_rules_generator = SconsRulesGenerator('SConstruct',
+                                                    self.__blade_path, self)
+        #rules_buf = build_rules_generator.generate_scons_script()
+        build_rules_generator.generate_scons_script()
+        console.info('Generating scons_script.')
 
         generator = NinjaFileGenerator(self.__build_script, self.__blade_path, self)
         rules = generator.generate_build_script()
